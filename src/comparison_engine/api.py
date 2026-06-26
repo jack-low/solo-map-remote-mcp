@@ -242,7 +242,7 @@ def create_app() -> FastAPI:
       text-transform: uppercase;
     }
     .value { font-size: 1.08rem; font-weight: 760; }
-    section { padding: 70px 48px; border-bottom: 1px solid var(--line); }
+    section { padding: 70px 48px; border-bottom: 1px solid var(--line); scroll-margin-top: 92px; }
     .section-head {
       display: flex;
       align-items: end;
