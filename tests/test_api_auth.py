@@ -1,3 +1,5 @@
+import re
+
 from fastapi.testclient import TestClient
 
 from comparison_engine.api import create_app
@@ -49,10 +51,17 @@ def test_root_page_and_security_headers(monkeypatch):
     assert "codex mcp add" in response.text
     assert "Cursor" in response.text
     assert "/v1" in response.text
+    assert response.text.count('data-copy') >= 6
+    assert 'class="icon-copy"' in response.text
+    assert "navigator.clipboard" in response.text
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
-    assert "script-src" not in response.headers["content-security-policy"]
+    csp = response.headers["content-security-policy"]
+    nonce_match = re.search(r"script-src 'nonce-([^']+)'", csp)
+    assert nonce_match
+    assert f'nonce="{nonce_match.group(1)}"' in response.text
+    assert "https://cdn.jsdelivr.net" not in csp
 
 
 def test_docs_page_allows_swagger_assets(monkeypatch):

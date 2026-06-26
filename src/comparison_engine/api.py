@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from secrets import compare_digest
+from secrets import compare_digest, token_urlsafe
 from typing import Any
 
 import uvicorn
@@ -36,7 +36,7 @@ def max_body_bytes() -> int:
         return DEFAULT_MAX_BODY_BYTES
 
 
-def content_security_policy_for(path: str) -> str:
+def content_security_policy_for(path: str, nonce: str | None = None) -> str:
     if path in {f"{API_PREFIX}/docs", f"{API_PREFIX}/redoc"}:
         return (
             "default-src 'none'; "
@@ -45,6 +45,12 @@ def content_security_policy_for(path: str) -> str:
             "img-src 'self' data: https://fastapi.tiangolo.com; "
             "font-src 'self' data: https://cdn.jsdelivr.net; "
             "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+        )
+    if path == "/" and nonce:
+        return (
+            f"default-src 'none'; script-src 'nonce-{nonce}'; "
+            "style-src 'unsafe-inline'; img-src 'self'; "
+            "base-uri 'none'; frame-ancestors 'none'"
         )
     return (
         "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; "
@@ -72,6 +78,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next: Any) -> Response:
+        request.state.csp_nonce = token_urlsafe(16)
         content_length = request.headers.get("content-length")
         try:
             if content_length and int(content_length) > max_body_bytes():
@@ -84,7 +91,9 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Content-Security-Policy"] = content_security_policy_for(request.url.path)
+        response.headers["Content-Security-Policy"] = content_security_policy_for(
+            request.url.path, request.state.csp_nonce
+        )
         forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
         if request.url.scheme == "https" or forwarded_proto == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -98,8 +107,8 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=401, detail="Invalid API token")
 
     @app.get("/", response_class=HTMLResponse)
-    def root() -> str:
-        return """<!doctype html>
+    def root(request: Request) -> str:
+        html = """<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -301,6 +310,52 @@ def create_app() -> FastAPI:
       line-height: 1.65;
     }
     code { font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace; }
+    .copy-shell {
+      position: relative;
+      margin: 14px 0 18px;
+    }
+    .copy-shell pre { padding-right: 58px; }
+    .copy-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      border: 1px solid rgba(219, 234, 254, .24);
+      background: rgba(255, 255, 255, .08);
+      color: #dbeafe;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .copy-button:hover {
+      background: rgba(255, 255, 255, .15);
+      border-color: rgba(219, 234, 254, .44);
+    }
+    .copy-button:focus-visible {
+      outline: 3px solid rgba(16, 191, 208, .55);
+      outline-offset: 2px;
+    }
+    .copy-button:active { transform: translateY(1px); }
+    .copy-button svg { width: 18px; height: 18px; stroke-width: 2; }
+    .copy-button .icon-check { display: none; color: #6ee7b7; }
+    .copy-button.is-copied .icon-copy { display: none; }
+    .copy-button.is-copied .icon-check { display: block; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     .agent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .endpoint-list { border-top: 1px solid var(--line); }
     .endpoint {
@@ -428,25 +483,60 @@ def create_app() -> FastAPI:
           <h2>各エージェントに追加する。</h2>
           <p class="section-copy">GitHubリポジトリをcloneし、<code>&lt;local-clone-path&gt;</code> をclone後のローカル絶対パスに置き換えてください。GitHub URLをそのまま <code>uv --directory</code> には渡しません。</p>
         </div>
-        <pre><code>git clone https://github.com/jack-low/solo-map-remote-mcp.git
+        <div class="copy-shell">
+          <button class="copy-button" type="button" data-copy aria-label="cloneコマンドをコピー" title="コピー">
+            <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span class="sr-only">コピー</span>
+          </button>
+          <pre><code>git clone https://github.com/jack-low/solo-map-remote-mcp.git
 cd solo-map-remote-mcp</code></pre>
+        </div>
         <div class="agent-grid">
-          <article class="card"><h3>Claude Code</h3><pre><code>claude mcp add --scope user --transport stdio solo-map-comparison-engine -- uv --directory &lt;local-clone-path&gt; run solo-compare-mcp
-claude mcp list</code></pre></article>
-          <article class="card"><h3>Codex</h3><pre><code>codex mcp add solo-map-comparison-engine -- uv --directory &lt;local-clone-path&gt; run solo-compare-mcp
-codex mcp list</code></pre></article>
-          <article class="card"><h3>Cursor</h3><pre><code>{
+          <article class="card"><h3>Claude Code</h3><div class="copy-shell">
+            <button class="copy-button" type="button" data-copy aria-label="Claude Codeの接続コードをコピー" title="コピー">
+              <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span class="sr-only">コピー</span>
+            </button>
+            <pre><code>claude mcp add --scope user --transport stdio solo-map-comparison-engine -- uv --directory &lt;local-clone-path&gt; run solo-compare-mcp
+claude mcp list</code></pre>
+          </div></article>
+          <article class="card"><h3>Codex</h3><div class="copy-shell">
+            <button class="copy-button" type="button" data-copy aria-label="Codexの接続コードをコピー" title="コピー">
+              <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span class="sr-only">コピー</span>
+            </button>
+            <pre><code>codex mcp add solo-map-comparison-engine -- uv --directory &lt;local-clone-path&gt; run solo-compare-mcp
+codex mcp list</code></pre>
+          </div></article>
+          <article class="card"><h3>Cursor</h3><div class="copy-shell">
+            <button class="copy-button" type="button" data-copy aria-label="Cursorの接続コードをコピー" title="コピー">
+              <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span class="sr-only">コピー</span>
+            </button>
+            <pre><code>{
   "mcpServers": {
     "solo-map-comparison-engine": {
       "command": "uv",
       "args": ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]
     }
   }
-}</code></pre></article>
-          <article class="card"><h3>Gemini CLI / Hermes</h3><pre><code>name: solo-map-comparison-engine
+}</code></pre>
+          </div></article>
+          <article class="card"><h3>Gemini CLI / Hermes</h3><div class="copy-shell">
+            <button class="copy-button" type="button" data-copy aria-label="Gemini CLIとHermesの接続コードをコピー" title="コピー">
+              <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <span class="sr-only">コピー</span>
+            </button>
+            <pre><code>name: solo-map-comparison-engine
 transport: stdio
 command: uv
-args: ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]</code></pre></article>
+args: ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]</code></pre>
+          </div></article>
         </div>
       </section>
 
@@ -455,7 +545,14 @@ args: ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]</co
           <h2>AIに接続を任せる。</h2>
           <p class="section-copy">Claude Code、Codex、CursorなどのAIエージェントに、そのまま貼り付けるための依頼文です。</p>
         </div>
-        <pre><code>https://github.com/jack-low/solo-map-remote-mcp をcloneし、clone後のローカル絶対パスを &lt;local-clone-path&gt; として、このMCPを追加してください。名前は solo-map-comparison-engine、transport は stdio、command は uv、args は ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"] です。住宅ローン借換や商品比較では compare_loan_repayment / compare_generic_options を使い、前提・注意点・候補理由を必ず返してください。</code></pre>
+        <div class="copy-shell">
+          <button class="copy-button" type="button" data-copy aria-label="AIへの接続依頼文をコピー" title="コピー">
+            <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span class="sr-only">コピー</span>
+          </button>
+          <pre><code>https://github.com/jack-low/solo-map-remote-mcp をcloneし、clone後のローカル絶対パスを &lt;local-clone-path&gt; として、このMCPを追加してください。名前は solo-map-comparison-engine、transport は stdio、command は uv、args は ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"] です。住宅ローン借換や商品比較では compare_loan_repayment / compare_generic_options を使い、前提・注意点・候補理由を必ず返してください。</code></pre>
+        </div>
       </section>
 
       <section id="endpoints">
@@ -482,8 +579,48 @@ args: ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]</co
       <span>Comparison outputs are planning support, not formal approval.</span>
     </footer>
   </div>
+  <script nonce="__CSP_NONCE__">
+    (() => {
+      const copyText = async (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.top = "-1000px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      };
+      document.querySelectorAll("[data-copy]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const code = button.closest(".copy-shell")?.querySelector("code");
+          if (!code) return;
+          try {
+            await copyText(code.innerText.trim());
+            button.classList.add("is-copied");
+            button.setAttribute("aria-label", "コピーしました");
+            button.setAttribute("title", "コピーしました");
+            window.setTimeout(() => {
+              button.classList.remove("is-copied");
+              button.setAttribute("aria-label", "コピー");
+              button.setAttribute("title", "コピー");
+            }, 1600);
+          } catch {
+            button.setAttribute("aria-label", "コピーできませんでした");
+            button.setAttribute("title", "コピーできませんでした");
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>"""
+        return html.replace("__CSP_NONCE__", request.state.csp_nonce)
 
     @app.get("/health")
     def health() -> dict[str, Any]:
