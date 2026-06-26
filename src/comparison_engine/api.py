@@ -36,6 +36,22 @@ def max_body_bytes() -> int:
         return DEFAULT_MAX_BODY_BYTES
 
 
+def content_security_policy_for(path: str) -> str:
+    if path in {f"{API_PREFIX}/docs", f"{API_PREFIX}/redoc"}:
+        return (
+            "default-src 'none'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; "
+            "font-src 'self' data: https://cdn.jsdelivr.net; "
+            "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+        )
+    return (
+        "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; "
+        "base-uri 'none'; frame-ancestors 'none'"
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Solo Map Comparison Engine",
@@ -68,10 +84,7 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; "
-            "base-uri 'none'; frame-ancestors 'none'"
-        )
+        response.headers["Content-Security-Policy"] = content_security_policy_for(request.url.path)
         forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
         if request.url.scheme == "https" or forwarded_proto == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

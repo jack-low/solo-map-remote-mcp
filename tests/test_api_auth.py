@@ -52,6 +52,21 @@ def test_root_page_and_security_headers(monkeypatch):
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert "script-src" not in response.headers["content-security-policy"]
+
+
+def test_docs_page_allows_swagger_assets(monkeypatch):
+    monkeypatch.setenv("SOLO_MAP_API_TOKEN", "test-token-123456789012345")
+    client = TestClient(create_app())
+    response = client.get("/v1/docs", headers={"X-Forwarded-Proto": "https"})
+    assert response.status_code == 200
+    assert "Swagger UI" in response.text
+    csp = response.headers["content-security-policy"]
+    assert "script-src" in csp
+    assert "style-src" in csp
+    assert "https://cdn.jsdelivr.net" in csp
+    assert "connect-src 'self'" in csp
+    assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
 
 
 def test_v1_index(monkeypatch):
