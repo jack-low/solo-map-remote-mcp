@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from secrets import compare_digest, token_urlsafe
+from secrets import compare_digest
 from typing import Any
 
 import uvicorn
@@ -36,7 +36,7 @@ def max_body_bytes() -> int:
         return DEFAULT_MAX_BODY_BYTES
 
 
-def content_security_policy_for(path: str, nonce: str | None = None) -> str:
+def content_security_policy_for(path: str) -> str:
     if path in {f"{API_PREFIX}/docs", f"{API_PREFIX}/redoc"}:
         return (
             "default-src 'none'; "
@@ -46,9 +46,9 @@ def content_security_policy_for(path: str, nonce: str | None = None) -> str:
             "font-src 'self' data: https://cdn.jsdelivr.net; "
             "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
         )
-    if path == "/" and nonce:
+    if path == "/":
         return (
-            f"default-src 'none'; script-src 'nonce-{nonce}'; "
+            "default-src 'none'; script-src 'self'; "
             "style-src 'unsafe-inline'; img-src 'self'; "
             "base-uri 'none'; frame-ancestors 'none'"
         )
@@ -78,7 +78,6 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next: Any) -> Response:
-        request.state.csp_nonce = token_urlsafe(16)
         content_length = request.headers.get("content-length")
         try:
             if content_length and int(content_length) > max_body_bytes():
@@ -91,9 +90,7 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Content-Security-Policy"] = content_security_policy_for(
-            request.url.path, request.state.csp_nonce
-        )
+        response.headers["Content-Security-Policy"] = content_security_policy_for(request.url.path)
         forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
         if request.url.scheme == "https" or forwarded_proto == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -107,8 +104,8 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=401, detail="Invalid API token")
 
     @app.get("/", response_class=HTMLResponse)
-    def root(request: Request) -> str:
-        html = """<!doctype html>
+    def root() -> str:
+        return """<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -579,48 +576,9 @@ args: ["--directory", "&lt;local-clone-path&gt;", "run", "solo-compare-mcp"]</co
       <span>Comparison outputs are planning support, not formal approval.</span>
     </footer>
   </div>
-  <script nonce="__CSP_NONCE__">
-    (() => {
-      const copyText = async (text) => {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-          return;
-        }
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "fixed";
-        textarea.style.top = "-1000px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        textarea.remove();
-      };
-      document.querySelectorAll("[data-copy]").forEach((button) => {
-        button.addEventListener("click", async () => {
-          const code = button.closest(".copy-shell")?.querySelector("code");
-          if (!code) return;
-          try {
-            await copyText(code.innerText.trim());
-            button.classList.add("is-copied");
-            button.setAttribute("aria-label", "コピーしました");
-            button.setAttribute("title", "コピーしました");
-            window.setTimeout(() => {
-              button.classList.remove("is-copied");
-              button.setAttribute("aria-label", "コピー");
-              button.setAttribute("title", "コピー");
-            }, 1600);
-          } catch {
-            button.setAttribute("aria-label", "コピーできませんでした");
-            button.setAttribute("title", "コピーできませんでした");
-          }
-        });
-      });
-    })();
-  </script>
+  <script src="/assets/copy-buttons.js" defer></script>
 </body>
 </html>"""
-        return html.replace("__CSP_NONCE__", request.state.csp_nonce)
 
     @app.get("/health")
     def health() -> dict[str, Any]:

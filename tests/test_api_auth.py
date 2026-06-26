@@ -1,5 +1,3 @@
-import re
-
 from fastapi.testclient import TestClient
 
 from comparison_engine.api import create_app
@@ -53,14 +51,12 @@ def test_root_page_and_security_headers(monkeypatch):
     assert "/v1" in response.text
     assert response.text.count('data-copy') >= 6
     assert 'class="icon-copy"' in response.text
-    assert "navigator.clipboard" in response.text
+    assert '/assets/copy-buttons.js' in response.text
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
     csp = response.headers["content-security-policy"]
-    nonce_match = re.search(r"script-src 'nonce-([^']+)'", csp)
-    assert nonce_match
-    assert f'nonce="{nonce_match.group(1)}"' in response.text
+    assert "script-src 'self'" in csp
     assert "https://cdn.jsdelivr.net" not in csp
 
 
@@ -96,6 +92,16 @@ def test_logo_asset_is_served(monkeypatch):
     response = client.get("/assets/solomap-logo.png")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
+
+
+def test_copy_script_asset_is_served(monkeypatch):
+    monkeypatch.setenv("SOLO_MAP_API_TOKEN", "test-token-123456789012345")
+    client = TestClient(create_app())
+    response = client.get("/assets/copy-buttons.js")
+    assert response.status_code == 200
+    assert "javascript" in response.headers["content-type"]
+    assert "navigator.clipboard" in response.text
+    assert "copyButtonsReady" in response.text
 
 
 def test_rejects_large_request_body(monkeypatch):

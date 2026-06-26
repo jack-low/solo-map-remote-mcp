@@ -34,7 +34,7 @@ solo-compare-mcp = "comparison_engine.mcp_server:main"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-comparison_engine = ["py.typed", "static/*.png"]
+comparison_engine = ["py.typed", "static/*.png", "static/*.js"]
 
 [tool.ruff]
 line-length = 100
