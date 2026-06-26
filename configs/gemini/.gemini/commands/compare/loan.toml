@@ -1,0 +1,9 @@
+description = "Compare loan repayment options through the Solo Map comparison engine."
+prompt = """
+Extract loan requirements from the user request and use the Solo Map comparison engine.
+Prefer MCP tool compare_loan_repayment. If unavailable, call POST /v1/loan/compare.
+Return best option, ranked comparison, assumptions, warnings, and eligibility failures.
+
+User request:
+{{args}}
+"""

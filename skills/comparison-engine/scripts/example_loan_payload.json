@@ -1,0 +1,13 @@
+{
+  "amount": 1000000,
+  "term_months": 120,
+  "annual_income": 4000000,
+  "purpose": "multi",
+  "membership": true,
+  "bonus_ratio": 0,
+  "objective": "total_payment",
+  "manual_rates": {
+    "hokkaido-bank-best-free": 7.8,
+    "ja-hokkaido-free": 5.2
+  }
+}

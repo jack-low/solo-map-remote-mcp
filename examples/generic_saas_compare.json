@@ -1,0 +1,35 @@
+{
+  "criteria": [
+    {"key": "monthly_price", "label": "月額費用", "direction": "min", "weight": 3},
+    {"key": "api", "label": "API対応", "direction": "match", "ideal": true, "weight": 2, "required": true},
+    {"key": "japanese_docs", "label": "日本語ドキュメント", "direction": "match", "ideal": true, "weight": 1},
+    {"key": "uptime", "label": "稼働率", "direction": "max", "weight": 2}
+  ],
+  "constraints": {
+    "api": true,
+    "monthly_price": {"max": 50000}
+  },
+  "options": [
+    {
+      "id": "tool-a",
+      "name": "Tool A",
+      "provider": "Vendor A",
+      "metrics": {"monthly_price": 29800, "api": true, "japanese_docs": true, "uptime": 99.9},
+      "notes": ["費用とドキュメントのバランスが良い"]
+    },
+    {
+      "id": "tool-b",
+      "name": "Tool B",
+      "provider": "Vendor B",
+      "metrics": {"monthly_price": 12000, "api": false, "japanese_docs": true, "uptime": 99.5},
+      "notes": ["安いがAPI条件に不一致"]
+    },
+    {
+      "id": "tool-c",
+      "name": "Tool C",
+      "provider": "Vendor C",
+      "metrics": {"monthly_price": 45000, "api": true, "japanese_docs": false, "uptime": 99.99},
+      "notes": ["高信頼だが日本語ドキュメント弱め"]
+    }
+  ]
+}

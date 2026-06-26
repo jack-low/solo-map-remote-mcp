@@ -1,0 +1,17 @@
+{
+  "amount": 1000000,
+  "term_months": 120,
+  "annual_income": 4000000,
+  "purpose": "multi",
+  "membership": true,
+  "bonus_ratio": 0,
+  "objective": "recommendation",
+  "providers": ["北洋", "ろうきん"],
+  "query": "web",
+  "require_web_contract": true,
+  "max_monthly_payment": 15000,
+  "manual_rates": {
+    "hokkaido-bank-best-free": 7.8,
+    "ja-hokkaido-free": 5.2
+  }
+}

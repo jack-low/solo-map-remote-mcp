@@ -1,0 +1,27 @@
+{
+  "id": "loan-repayment",
+  "name": "Loan Repayment Comparison",
+  "version": "0.1.0",
+  "category": "finance/comparison",
+  "api_base": "/v1",
+  "supported_agents": ["codex", "claude-code", "gemini-cli", "cursor", "hermes-agent", "mcp"],
+  "tools": [
+    {
+      "name": "compare_loan_repayment",
+      "method": "POST",
+      "path": "/v1/loan/compare",
+      "description": "Compare repayment plans, mortgage refinance scenarios, fuzzy-search providers, filter conditions, and return recommendation reasons."
+    },
+    {
+      "name": "compare_generic_options",
+      "method": "POST",
+      "path": "/v1/compare/generic",
+      "description": "Run a weighted comparison for non-loan domains."
+    }
+  ],
+  "notes": [
+    "The comparison engine is reusable beyond loans: SaaS, products, vendors, subsidies, insurance, schools, and infrastructure choices.",
+    "Housing-loan refinance scenarios include monthly-payment deltas, reset-rate context, and fee/condition caveats.",
+    "Financial outputs are approximate simulations and must not be treated as formal loan approval or financial advice."
+  ]
+}

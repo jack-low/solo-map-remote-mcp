@@ -1,0 +1,18 @@
+---
+description: Use the Solo Map comparison engine when implementing or extending comparison plugins.
+globs:
+  - "**/*.py"
+  - "**/*.json"
+alwaysApply: false
+---
+
+# Solo Map Comparison Engine Rule
+
+When editing this repository:
+
+- Put shared scoring and eligibility logic in `src/comparison_engine/engine.py`.
+- Put domain-specific product data in `data/*.json`.
+- Preserve API compatibility under `/v1` unless intentionally releasing a breaking version.
+- Update MCP tools when adding public API capabilities.
+- Add tests for each new plugin or decision rule.
+- Keep financial comparisons explicit about assumptions and warnings.

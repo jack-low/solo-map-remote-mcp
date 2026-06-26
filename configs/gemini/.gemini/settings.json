@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "solo-map-comparison-engine": {
+      "command": "python",
+      "args": ["-m", "comparison_engine.mcp_server"],
+      "env": {
+        "PYTHONPATH": "./src"
+      },
+      "trust": false,
+      "includeTools": [
+        "list_comparison_plugins",
+        "compare_loan_repayment",
+        "compare_generic_options"
+      ]
+    }
+  }
+}

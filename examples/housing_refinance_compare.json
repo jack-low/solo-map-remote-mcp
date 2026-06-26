@@ -1,0 +1,13 @@
+{
+  "amount": 26000000,
+  "term_months": 480,
+  "purpose": "home_refinance",
+  "objective": "recommendation",
+  "query": "住宅ローン 借換",
+  "max_monthly_payment": 90000,
+  "current_annual_rate": 0.9,
+  "reset_annual_rate": 3.25,
+  "current_monthly_payment": 70000,
+  "reset_monthly_payment": 90000,
+  "include_ineligible": false
+}

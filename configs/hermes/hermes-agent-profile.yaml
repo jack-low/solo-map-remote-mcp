@@ -1,0 +1,21 @@
+name: solo-map-comparison-engine
+version: 0.1.0
+kind: agent-profile
+summary: Reusable comparison engine for loans and generic decision workflows.
+entrypoints:
+  api:
+    base_url: http://localhost:8000/v1
+    health: http://localhost:8000/health
+  mcp:
+    transport: stdio
+    command: uv
+    args:
+      - --directory
+      - <local-clone-path>
+      - run
+      - solo-compare-mcp
+rules:
+  - Prefer MCP tools for structured comparisons.
+  - Use REST API when MCP is unavailable.
+  - Always return assumptions, warnings, eligibility failures, and source URLs.
+  - Never treat loan simulations as formal approval.

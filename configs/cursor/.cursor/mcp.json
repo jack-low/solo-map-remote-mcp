@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "solo-map-comparison-engine": {
+      "command": "uv",
+      "args": ["--directory", "<local-clone-path>", "run", "solo-compare-mcp"]
+    }
+  }
+}
