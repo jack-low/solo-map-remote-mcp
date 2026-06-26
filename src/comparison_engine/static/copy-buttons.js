@@ -7,8 +7,11 @@
     textarea.style.top = "-1000px";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand("copy");
+    const copied = document.execCommand("copy");
     textarea.remove();
+    if (!copied) {
+      throw new Error("Copy command was rejected");
+    }
   };
 
   const copyText = async (text) => {
